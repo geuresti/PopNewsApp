@@ -6,6 +6,7 @@ import { defineQuery, PortableText } from "next-sanity";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { isAuthenticated } from "../../firebase/firebase";
 
 const ARTICLES_QUERY = defineQuery(`*[ 
     _type == "article" && 
@@ -13,16 +14,26 @@ const ARTICLES_QUERY = defineQuery(`*[
     [0]{title, details, publishDate, author, image, tags}`);
 
 const { projectId, dataset } = client.config();
+
 const urlFor = (source: SanityImageSource) =>
   projectId && dataset
     ? imageUrlBuilder({ projectId, dataset }).image(source)
     : null;
 
-export default async function EventPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function EventPage({ params, }: { params: Promise<{ slug: string }>; }) {
+  
+  if (!isAuthenticated) {
+    return {
+      redirect: {
+        destination: '/',
+        permanent: false,
+      },
+    };
+    console.log("You are LOGGED OUT BRUH!!!");
+  } else {
+    console.log("you are logged in");
+  }
+
   const { data: article } = await sanityFetch({
     query: ARTICLES_QUERY,
     params: { slug: (await params).slug },
@@ -46,13 +57,12 @@ export default async function EventPage({
     ? urlFor(image)?.width(550).height(310).url()
     : null;
 
- // const articleDate = new Date(publishDate).toDateString();
+  const articleDate = new Date(publishDate).toDateString();
 
   return (
     <main className="container mx-auto grid gap-12 p-12">
-      <div>{title}</div>
       <div className="mb-4">
-        <Link href="/">← Back to Home</Link>
+        <Link href="/articles/">← Back to Home</Link>
       </div>
       <div className="grid items-top gap-12 sm:grid-cols-2">
         <Image
@@ -64,11 +74,11 @@ export default async function EventPage({
         />
         <div className="flex flex-col justify-center space-y-4">
           <div className="space-y-4">
-            {title ? (
-              <div className="inline-block rounded-lg bg-gray-100 px-3 py-1 text-sm dark:bg-gray-800 capitalize">
-                <p> hehh? </p>
+            {tags.map((tag, index) => (
+              <div key={index} className="inline-block rounded-lg bg-gray-100 px-3 py-1 text-sm dark:bg-gray-800 capitalize mr-2">
+                {tag}
               </div>
-            ) : null}
+            ))}
             {title ? (
               <h1 className="text-4xl font-bold tracking-tighter mb-8">
                 {title}
@@ -83,7 +93,7 @@ export default async function EventPage({
             <dl className="grid grid-cols-2 gap-1 text-sm font-medium sm:gap-2 lg:text-base">
               <dd className="font-semibold">Date</dd>
               <div>
-                <p> {publishDate} </p>
+                <p> {articleDate} </p>
               </div>
             </dl>
           </div>
@@ -92,8 +102,6 @@ export default async function EventPage({
               <PortableText value={details} />
             </div>
           )}
-          <p> {tags} </p>
-
         </div>
       </div>
     </main>
